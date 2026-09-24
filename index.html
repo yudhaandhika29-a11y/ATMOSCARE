@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ATMOSCARE - Smart Air Purifier</title>
+    
+    <!-- Google Fonts: Plus Jakarta Sans -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class', // Mengaktifkan Dark Mode
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+                    },
+                    colors: {
+                        earth: {
+                            50: '#f4f6f4', 100: '#eef1ee', 200: '#d5ddd4', 300: '#b0c0ae',
+                            400: '#8ba288', 500: '#6d866a', 600: '#556a52', 700: '#455543',
+                            800: '#384635', 900: '#2f392d',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { 
+            background-color: #f4f6f4; 
+            transition: background-color 0.4s ease, color 0.4s ease; 
+        }
+        .dark body { 
+            background-color: #0f172a; /* slate-900 */
+        }
+        .hide-scroll::-webkit-scrollbar { display: none; }
+        .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Glassmorphism CSS */
+        .glass {
+            background: rgba(255, 255, 255, 0.75);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        .dark .glass {
+            background: rgba(30, 41, 59, 0.75); /* slate-800 */
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .glass-card {
+            background: rgba(255, 255, 255, 1);
+            backdrop-filter: blur(10px);
+        }
+        .dark .glass-card {
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        /* Scroll Reveal Animation */
+        .reveal {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 0.6s cubic-bezier(0.5, 0, 0, 1);
+        }
+        .reveal.active {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Skeleton Loading Animation */
+        .skeleton-wrapper {
+            position: absolute;
+            inset: 0;
+            z-index: 40;
+            background: #f4f6f4;
+            transition: opacity 0.5s ease;
+        }
+        .dark .skeleton-wrapper { background: #0f172a; }
+        
+        .skeleton {
+            background-color: #e2e8f0;
+            position: relative;
+            overflow: hidden;
+            border-radius: 1.5rem;
+        }
+        .dark .skeleton { background-color: #334155; }
+        
+        .skeleton::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+            animation: shimmer 1.5s infinite;
+        }
+        .dark .skeleton::after {
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent);
+        }
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+    </style>
+</head>
+<body class="text-slate-800 dark:text-slate-200 h-screen flex flex-col relative overflow-hidden font-sans">
+
+    <!-- Skeleton Loading Screen -->
+    <div id="skeleton-screen" class="skeleton-wrapper p-4 md:p-8 flex flex-col gap-6">
+        <div class="h-16 md:h-20 w-full skeleton mb-4"></div>
+        <div class="grid grid-cols-1 lg:grid-cols-5 gap-4 md:gap-6 h-full max-w-6xl mx-auto w-full">
+            <div class="lg:col-span-2 skeleton h-64 lg:h-full"></div>
+            <div class="lg:col-span-3 flex flex-col gap-6">
+                <div class="skeleton h-24"></div>
+                <div class="skeleton h-32"></div>
+                <div class="skeleton h-24"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- HEADER: Logo & Navigasi Sejajar (Glassmorphism) -->
+    <header class="glass shadow-sm px-4 md:px-8 py-3 md:py-4 z-20 sticky top-0 flex items-center justify-between transition-colors duration-300">
+        
+        <!-- KIRI: Logo ATMOSCARE -->
+        <div class="flex items-center gap-2 md:gap-3 hover:scale-105 transition-transform duration-300 cursor-pointer">
+            <div class="w-9 h-9 md:w-12 md:h-12 bg-earth-800 dark:bg-earth-600 rounded-xl flex items-center justify-center text-white shadow-md shrink-0">
+                <i class="fa-solid fa-leaf md:text-xl"></i>
+            </div>
+            <div>
+                <h1 class="font-black text-xl md:text-2xl text-earth-900 dark:text-white tracking-tight leading-none transition-colors">ATMOSCARE</h1>
+                <p class="text-[9px] md:text-xs text-slate-400 dark:text-slate-400 uppercase tracking-widest mt-0.5">Smart Dashboard</p>
+            </div>
+        </div>
+
+        <!-- KANAN: Navigasi & Waktu -->
+        <div class="flex items-center gap-3 md:gap-6">
+            <!-- Waktu Update -->
+            <div class="hidden md:block text-right">
+                <div class="text-[10px] text-slate-400 uppercase tracking-wider">Pembaruan Terakhir</div>
+                <div id="last-update-time" class="text-sm font-bold text-earth-700 dark:text-earth-400 transition-colors">--:--:--</div>
+            </div>
+
+            <!-- Tombol Navigasi & Dark Mode -->
+            <div class="flex items-center gap-2">
+                <!-- Toggle Dark Mode -->
+                <button onclick="toggleDarkMode()" class="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-yellow-400 shadow-sm hover:scale-105 hover:shadow-md flex items-center justify-center text-lg md:text-xl transition-all duration-300" title="Toggle Tema">
+                    <i id="theme-icon" class="fa-solid fa-moon"></i>
+                </button>
+                
+                <button onclick="switchTab('kendali')" id="nav-kendali" class="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-earth-800 text-white shadow-md flex items-center justify-center text-lg md:text-xl hover:scale-105 hover:shadow-lg transition-all duration-300" title="Kendali Sistem">
+                    <i class="fa-solid fa-sliders"></i>
+                </button>
+                
+                <button onclick="switchTab('monitoring')" id="nav-monitoring" class="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-earth-50 dark:hover:bg-slate-700 shadow-sm flex items-center justify-center text-lg md:text-xl hover:scale-105 hover:shadow-lg transition-all duration-300" title="Monitoring Sensor">
+                    <i class="fa-solid fa-chart-pie"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 overflow-y-auto hide-scroll p-4 md:p-8 z-0">
+
+        <!-- ==================== TAB KENDALI ==================== -->
+        <div id="tab-kendali" class="max-w-6xl mx-auto block">
+            
+            <div class="grid grid-cols-1 lg:grid-cols-5 gap-4 md:gap-6">
+                
+                <!-- BAGIAN KIRI: Animasi Airflow -->
+                <div class="reveal lg:col-span-2 relative h-48 lg:h-full min-h-[220px] bg-gradient-to-b from-earth-100 to-earth-200 dark:from-slate-800 dark:to-slate-700 rounded-3xl overflow-hidden shadow-inner border border-earth-300 dark:border-slate-600 flex items-center justify-center transition-colors duration-300 hover:shadow-lg">
+                    <canvas id="airflow-canvas" class="absolute inset-0 w-full h-full"></canvas>
+                    <div class="relative z-10 flex flex-col items-center hover:scale-105 transition-transform duration-300">
+                        <i class="fa-solid fa-wind text-earth-700/50 dark:text-white/20 text-4xl md:text-5xl mb-2 drop-shadow-sm"></i>
+                        <div id="canvas-mode-text" class="text-earth-900 dark:text-slate-800 font-extrabold text-xl md:text-2xl tracking-wider drop-shadow-md bg-white/70 px-6 py-2 rounded-full backdrop-blur-md border border-white/50">
+                            OFF (0%)
+                        </div>
+                    </div>
+                </div>
+
+                <!-- BAGIAN KANAN: Panel Kontrol -->
+                <div class="lg:col-span-3 flex flex-col gap-4 md:gap-6">
+                    
+                    <!-- Power Control -->
+                    <div class="reveal glass-card p-5 md:p-6 rounded-3xl shadow-sm border border-earth-100 transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
+                        <div class="flex items-center gap-4 md:gap-5">
+                            <button id="powerBtn" onclick="togglePower()" class="w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-slate-400 dark:bg-slate-600 text-white flex items-center justify-center shadow-md transition-all duration-300 hover:scale-105 hover:shadow-lg relative">
+                                <div id="powerRing" class="absolute inset-0 rounded-2xl border-2 border-emerald-400 animate-ping opacity-20 hidden"></div>
+                                <i class="fa-solid fa-power-off text-xl md:text-2xl relative z-10"></i>
+                            </button>
+                            <div>
+                                <div id="powerStateLabel" class="font-bold text-slate-700 dark:text-slate-200 md:text-lg transition-colors">Sistem Purifier Mati</div>
+                                <div class="flex items-center gap-2 mt-1 md:mt-2">
+                                    <span id="powerBadge" class="px-2.5 py-1 text-[10px] md:text-xs font-bold rounded-full bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-600 transition-colors">STANDBY</span>
+                                    <span class="text-[10px] md:text-xs text-slate-400">Relay: <span id="relayText" class="font-bold text-slate-400">Nonaktif</span></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Mode Controls -->
+                    <div class="reveal glass-card p-5 md:p-6 rounded-3xl shadow-sm border border-earth-100 transition-all duration-300 hover:shadow-xl hover:-translate-y-1" style="transition-delay: 100ms;">
+                        <h3 class="text-xs md:text-sm font-bold text-slate-400 dark:text-slate-500 mb-4 uppercase tracking-wider">Mode Operasi</h3>
+                        <div class="grid grid-cols-4 gap-3 md:gap-4">
+                            <button id="mode-auto" onclick="setMode('AUTO')" class="mode-btn flex flex-col items-center justify-center py-4 rounded-2xl text-slate-600 dark:text-slate-300 hover:text-earth-800 dark:hover:text-white hover:bg-earth-100/50 dark:hover:bg-slate-700 transition-all duration-300 border border-earth-100 dark:border-slate-600 hover:scale-105 hover:shadow-md">
+                                <i class="fa-solid fa-wand-magic-sparkles mb-2 text-lg md:text-xl"></i><span class="text-[10px] md:text-xs font-bold">AUTO</span>
+                            </button>
+                            <button id="mode-eco" onclick="setMode('ECO')" class="mode-btn flex flex-col items-center justify-center py-4 rounded-2xl text-slate-600 dark:text-slate-300 hover:text-earth-800 dark:hover:text-white hover:bg-earth-100/50 dark:hover:bg-slate-700 transition-all duration-300 border border-earth-100 dark:border-slate-600 hover:scale-105 hover:shadow-md">
+                                <i class="fa-solid fa-leaf mb-2 text-lg md:text-xl"></i><span class="text-[10px] md:text-xs font-bold">ECO</span>
+                            </button>
+                            <button id="mode-turbo" onclick="setMode('TURBO')" class="mode-btn flex flex-col items-center justify-center py-4 rounded-2xl text-slate-600 dark:text-slate-300 hover:text-earth-800 dark:hover:text-white hover:bg-earth-100/50 dark:hover:bg-slate-700 transition-all duration-300 border border-earth-100 dark:border-slate-600 hover:scale-105 hover:shadow-md">
+                                <i class="fa-solid fa-gauge-high mb-2 text-lg md:text-xl"></i><span class="text-[10px] md:text-xs font-bold">TURBO</span>
+                            </button>
+                            <button id="mode-night" onclick="setMode('NIGHT')" class="mode-btn flex flex-col items-center justify-center py-4 rounded-2xl text-slate-600 dark:text-slate-300 hover:text-earth-800 dark:hover:text-white hover:bg-earth-100/50 dark:hover:bg-slate-700 transition-all duration-300 border border-earth-100 dark:border-slate-600 hover:scale-105 hover:shadow-md">
+                                <i class="fa-solid fa-moon mb-2 text-lg md:text-xl"></i><span class="text-[10px] md:text-xs font-bold">NIGHT</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Manual Fan Slider -->
+                    <div class="reveal glass-card p-5 md:p-6 rounded-3xl shadow-sm border border-earth-100 transition-all duration-300 hover:shadow-xl hover:-translate-y-1" style="transition-delay: 200ms;">
+                        <div class="flex justify-between items-end mb-5">
+                            <h3 class="text-xs md:text-sm font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Kecepatan Kipas Manual</h3>
+                            <div class="bg-earth-100 dark:bg-slate-700 px-3 md:px-4 py-1.5 rounded-lg text-earth-800 dark:text-earth-300 font-bold text-sm md:text-base transition-colors" id="fan-speed-val">0%</div>
+                        </div>
+                        <input type="range" id="fan-slider" min="0" max="100" value="0" oninput="manualFanSlider(this.value)" class="w-full h-2.5 md:h-3 bg-slate-200 dark:bg-slate-600 rounded-lg appearance-none cursor-pointer accent-earth-800 dark:accent-earth-500 hover:scale-[1.01] transition-transform">
+                        <div class="flex justify-between text-[10px] md:text-xs text-slate-400 dark:text-slate-500 mt-3 font-semibold">
+                            <span>OFF</span><span>50%</span><span>MAX</span>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== TAB MONITORING ==================== -->
+        <div id="tab-monitoring" class="hidden max-w-7xl mx-auto">
+            
+            <div class="md:hidden flex justify-between items-center mb-4 px-1 reveal">
+                <span class="text-xs font-bold text-slate-400 uppercase">Data Real-Time</span>
+                <span id="mobile-update-time" class="text-xs font-bold text-earth-700 dark:text-earth-400">--:--:--</span>
+            </div>
+
+            <!-- Grid Kartu Sensor -->
+            <div class="grid grid-cols-2 lg:grid-cols-5 md:grid-cols-3 gap-3 md:gap-5">
+                
+                <!-- AQI Card -->
+                <div class="reveal glass-card p-4 md:p-5 rounded-2xl md:rounded-3xl shadow-sm border border-earth-100 transition-all duration-300 hover:-translate-y-2 hover:shadow-xl">
+                    <div class="flex justify-between items-start">
+                        <div class="flex items-center gap-2 text-earth-800 dark:text-earth-400"><i class="fa-solid fa-shield-virus"></i> <span class="text-xs md:text-sm font-bold">AQI</span></div>
+                        <button onclick="toggleMiniChart('aqi')" class="text-slate-300 dark:text-slate-500 hover:text-earth-600 dark:hover:text-earth-300 hover:scale-110 transition-all"><i class="fa-solid fa-chart-line"></i></button>
+                    </div>
+                    <div class="mt-3 text-3xl md:text-4xl font-extrabold text-slate-700 dark:text-slate-100" id="val-aqi">0</div>
+                    <div class="text-[10px] md:text-xs text-slate-400 mt-1">Indeks Kualitas Udara</div>
+                    <div id="mini-container-aqi" class="hidden h-14 md:h-16 mt-4 w-full"><canvas id="miniChart-aqi"></canvas></div>
+                </div>
+
+                <!-- PM2.5 Card -->
+                <div class="reveal glass-card p-4 md:p-5 rounded-2xl md:rounded-3xl shadow-sm border border-earth-100 transition-all duration-300 hover:-translate-y-2 hover:shadow-xl" style="transition-delay: 50ms;">
+                    <div class="flex justify-between items-start">
+                        <div class="flex items-center gap-2 text-emerald-600 dark:text-emerald-400"><i class="fa-solid fa-smog"></i> <span class="text-xs md:text-sm font-bold">PM 2.5</span></div>
+                        <button onclick="toggleMiniChart('pm25')" class="text-slate-300 hover:text-emerald-600 hover:scale-110 transition-all"><i class="fa-solid fa-chart-line"></i></button>
+                    </div>
+                    <div class="mt-3 text-3xl md:text-4xl font-extrabold text-slate-700 dark:text-slate-100"><span id="val-pm25">0</span><span class="text-sm md:text-base font-medium text-slate-400 ml-1">µg/m³</span></div>
+                    <div class="text-[10px] md:text-xs text-slate-400 mt-1">Partikel Halus</div>
+                    <div id="mini-container-pm25" class="hidden h-14 md:h-16 mt-4 w-full"><canvas id="miniChart-pm25"></canvas></div>
+                </div>
+
+                <!-- GAS MQ-135 Card -->
+                <div class="reveal glass-card p-4 md:p-5 rounded-2xl md:rounded-3xl shadow-sm border border-earth-100 transition-all duration-300 hover:-translate-y-2 hover:shadow-xl col-span-2 lg:col-span-1 md:col-span-1" style="transition-delay: 100ms;">
+                    <div class="flex justify-between items-start">
+                        <div class="flex items-center gap-2 text-amber-600 dark:text-amber-500"><i class="fa-solid fa-cloud"></i> <span class="text-xs md:text-sm font-bold">Gas (MQ-135)</span></div>
+                        <button onclick="toggleMiniChart('gas')" class="text-slate-300 hover:text-amber-600 hover:scale-110 transition-all"><i class="fa-solid fa-chart-line"></i></button>
+                    </div>
+                    <div class="mt-3 text-3xl md:text-4xl font-extrabold text-slate-700 dark:text-slate-100"><span id="val-gas">0</span><span class="text-sm md:text-base font-medium text-slate-400 ml-1">PPM</span></div>
+                    <div class="text-[10px] md:text-xs text-slate-400 mt-1">Kandungan Gas Bahaya</div>
+                    <div id="mini-container-gas" class="hidden h-14 md:h-16 mt-4 w-full"><canvas id="miniChart-gas"></canvas></div>
+                </div>
+
+                <!-- Temp Card -->
+                <div class="reveal glass-card p-4 md:p-5 rounded-2xl md:rounded-3xl shadow-sm border border-earth-100 transition-all duration-300 hover:-translate-y-2 hover:shadow-xl" style="transition-delay: 150ms;">
+                    <div class="flex justify-between items-start">
+                        <div class="flex items-center gap-2 text-rose-500 dark:text-rose-400"><i class="fa-solid fa-temperature-half"></i> <span class="text-xs md:text-sm font-bold">Suhu</span></div>
+                        <button onclick="toggleMiniChart('temp')" class="text-slate-300 hover:text-rose-500 hover:scale-110 transition-all"><i class="fa-solid fa-chart-line"></i></button>
+                    </div>
+                    <div class="mt-3 text-3xl md:text-4xl font-extrabold text-slate-700 dark:text-slate-100"><span id="val-temp">0</span><span class="text-sm md:text-base font-medium text-slate-400 ml-1">°C</span></div>
+                    <div class="text-[10px] md:text-xs text-slate-400 mt-1">Temperatur Ruang</div>
+                    <div id="mini-container-temp" class="hidden h-14 md:h-16 mt-4 w-full"><canvas id="miniChart-temp"></canvas></div>
+                </div>
+
+                <!-- Humid Card -->
+                <div class="reveal glass-card p-4 md:p-5 rounded-2xl md:rounded-3xl shadow-sm border border-earth-100 transition-all duration-300 hover:-translate-y-2 hover:shadow-xl" style="transition-delay: 200ms;">
+                    <div class="flex justify-between items-start">
+                        <div class="flex items-center gap-2 text-cyan-500 dark:text-cyan-400"><i class="fa-solid fa-droplet"></i> <span class="text-xs md:text-sm font-bold">Lembap</span></div>
+                        <button onclick="toggleMiniChart('humid')" class="text-slate-300 hover:text-cyan-500 hover:scale-110 transition-all"><i class="fa-solid fa-chart-line"></i></button>
+                    </div>
+                    <div class="mt-3 text-3xl md:text-4xl font-extrabold text-slate-700 dark:text-slate-100"><span id="val-humid">0</span><span class="text-sm md:text-base font-medium text-slate-400 ml-1">%</span></div>
+                    <div class="text-[10px] md:text-xs text-slate-400 mt-1">Kelembapan Udara</div>
+                    <div id="mini-container-humid" class="hidden h-14 md:h-16 mt-4 w-full"><canvas id="miniChart-humid"></canvas></div>
+                </div>
+            </div>
+
+            <!-- GRAFIK GABUNGAN UTAMA -->
+            <div class="reveal glass-card p-4 md:p-6 rounded-3xl shadow-sm border border-earth-100 mt-4 md:mt-6 transition-all duration-300 hover:shadow-xl" style="transition-delay: 300ms;">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xs md:text-sm font-bold text-slate-400 uppercase tracking-wider">Grafik Historis Gabungan</h3>
+                </div>
+                <div id="chart-legend-chips" class="flex flex-wrap gap-2 md:gap-3 mb-4"></div>
+                <!-- Canvas Grafik Gabungan -->
+                <div class="h-48 md:h-72 lg:h-80 w-full relative">
+                    <canvas id="multiMetricChart"></canvas>
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed top-24 left-1/2 transform -translate-x-1/2 z-50 flex flex-col gap-2 w-max pointer-events-none"></div>
+
+    <script>
+        // GLOBAL STATE
+        const state = {
+            power: false,
+            mode: 'AUTO',
+            fanSpeed: 0,
+            telemetry: { aqi: 25, pm25: 12, gas: 150, temp: 26, humid: 55 },
+            historyLabels: [],
+            historyData: { aqi: [], pm25: [], gas: [], temp: [], humid: [] },
+            metricsChartVisible: { aqi: true, pm25: true, gas: true, temp: true, humid: true }
+        };
+
+        let chartInstance = null;
+        let miniCharts = {}; 
+        let isDark = false;
+
+        window.onload = () => {
+            // Hilangkan Skeleton Loader secara halus setelah 1.5 detik
+            setTimeout(() => {
+                const skel = document.getElementById('skeleton-screen');
+                skel.style.opacity = '0';
+                setTimeout(() => {
+                    skel.style.display = 'none';
+                    triggerObserver(); // Aktifkan animasi scroll reveal setelah loading selesai
+                }, 500);
+            }, 1500);
+
+            initChart();
+            initAirflowCanvas();
+            updateUI();
+            
+            setInterval(() => {
+                simulateRealtimeTelemetry();
+                pushDataToChart();
+                updateValuesUI();
+            }, 3000);
+            
+            setInterval(() => {
+                const now = new Date().toLocaleTimeString();
+                document.getElementById('last-update-time').textContent = now;
+                document.getElementById('mobile-update-time').textContent = now;
+            }, 1000);
+        };
+
+        /* DARK MODE TOGGLE */
+        function toggleDarkMode() {
+            isDark = !isDark;
+            document.documentElement.classList.toggle('dark', isDark);
+            
+            const icon = document.getElementById('theme-icon');
+            if(isDark) {
+                icon.classList.remove('fa-moon');
+                icon.classList.add('fa-sun');
+            } else {
+                icon.classList.remove('fa-sun');
+                icon.classList.add('fa-moon');
+            }
+            
+            // Perbarui warna grid chart saat dark mode
+            if(chartInstance) {
+                const gridColor = isDark ? 'rgba(255, 255, 255, 0.05)' : '#f3f4f6';
+                const textColor = isDark ? '#64748b' : '#9ca3af';
+                chartInstance.options.scales.y.grid.color = gridColor;
+                chartInstance.options.scales.y.ticks.color = textColor;
+                chartInstance.options.scales.x.ticks.color = textColor;
+                chartInstance.update();
+            }
+        }
+
+        /* SCROLL REVEAL (Intersection Observer) */
+        function triggerObserver() {
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('active');
+                    }
+                });
+            }, { threshold: 0.1 });
+
+            document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+        }
+
+        /* TABS NAVIGATION RESPONSIVE */
+        function switchTab(tab) {
+            document.getElementById('tab-kendali').classList.add('hidden');
+            document.getElementById('tab-monitoring').classList.add('hidden');
+            document.getElementById(`tab-${tab}`).classList.remove('hidden');
+
+            const btnK = document.getElementById('nav-kendali');
+            const btnM = document.getElementById('nav-monitoring');
+
+            // Class Active/Inactive yang diperbarui dengan efek hover & dark mode
+            const activeClass = "w-10 h-10 md:w-12 md:h-12 rounded-xl bg-earth-800 text-white shadow-md flex items-center justify-center text-lg md:text-xl hover:scale-105 hover:shadow-lg transition-all duration-300";
+            const inactiveClass = "w-10 h-10 md:w-12 md:h-12 rounded-xl bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-earth-50 dark:hover:bg-slate-700 shadow-sm flex items-center justify-center text-lg md:text-xl hover:scale-105 hover:shadow-lg transition-all duration-300";
+
+            if (tab === 'kendali') {
+                btnK.className = activeClass;
+                btnM.className = inactiveClass;
+            } else {
+                btnM.className = activeClass;
+                btnK.className = inactiveClass;
+            }
+            
+            if(tab === 'monitoring' && chartInstance) {
+                setTimeout(() => chartInstance.resize(), 100);
+                triggerObserver(); // Picu ulang animasi saat tab ganti
+            }
+        }
+
+        /* UPDATE DOM UI */
+        function updateValuesUI() {
+            document.getElementById('val-aqi').textContent = Math.round(state.telemetry.aqi);
+            document.getElementById('val-pm25').textContent = state.telemetry.pm25.toFixed(1);
+            document.getElementById('val-gas').textContent = Math.round(state.telemetry.gas);
+            document.getElementById('val-temp').textContent = state.telemetry.temp.toFixed(1);
+            document.getElementById('val-humid').textContent = Math.round(state.telemetry.humid);
+        }
+
+        function updateUI() {
+            const powerBtn = document.getElementById('powerBtn');
+            const powerRing = document.getElementById('powerRing');
+            const powerBadge = document.getElementById('powerBadge');
+            const powerStateLabel = document.getElementById('powerStateLabel');
+            const relayText = document.getElementById('relayText');
+
+            if (state.power) {
+                // Class diperbarui dengan hover efek
+                powerBtn.className = "w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-earth-800 dark:bg-emerald-600 text-white flex items-center justify-center shadow-lg transition-all duration-300 hover:scale-105 hover:shadow-xl relative";
+                powerRing.style.display = 'block';
+                powerBadge.className = "px-2.5 py-1 text-[10px] md:text-xs font-bold rounded-full bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-700 transition-colors";
+                powerBadge.textContent = "AKTIF";
+                powerStateLabel.textContent = "Sistem Purifier Menyala";
+                relayText.textContent = "Aktif (HIGH)";
+                relayText.className = "font-bold text-emerald-700 dark:text-emerald-400";
+            } else {
+                powerBtn.className = "w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-slate-400 dark:bg-slate-600 text-white flex items-center justify-center shadow-md transition-all duration-300 hover:scale-105 hover:shadow-lg relative";
+                powerRing.style.display = 'none';
+                powerBadge.className = "px-2.5 py-1 text-[10px] md:text-xs font-bold rounded-full bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-300 dark:border-slate-600 transition-colors";
+                powerBadge.textContent = "STANDBY";
+                powerStateLabel.textContent = "Sistem Purifier Mati";
+                relayText.textContent = "Nonaktif (LOW)";
+                relayText.className = "font-bold text-slate-400 dark:text-slate-500";
+            }
+
+            document.getElementById('fan-slider').value = state.power ? state.fanSpeed : 0;
+            document.getElementById('fan-speed-val').textContent = (state.power ? state.fanSpeed : 0) + '%';
+
+            ['ECO', 'TURBO', 'AUTO', 'NIGHT'].forEach(m => {
+                const btn = document.getElementById(`mode-${m.toLowerCase()}`);
+                if (btn) {
+                    if (state.mode === m && state.power) {
+                        btn.className = "mode-btn flex flex-col items-center justify-center py-4 rounded-2xl bg-earth-800 dark:bg-earth-600 text-white shadow-md transition-all duration-300 hover:scale-105 hover:shadow-lg border border-earth-800 dark:border-earth-600";
+                    } else {
+                        btn.className = "mode-btn flex flex-col items-center justify-center py-4 rounded-2xl text-slate-600 dark:text-slate-300 hover:text-earth-800 dark:hover:text-white hover:bg-earth-100/50 dark:hover:bg-slate-700 transition-all duration-300 hover:scale-105 hover:shadow-md border border-earth-100 dark:border-slate-600";
+                    }
+                }
+            });
+
+            document.getElementById('canvas-mode-text').textContent = state.power ? `${state.mode} (${state.fanSpeed}%)` : "OFF (0%)";
+            updateValuesUI();
+        }
+
+        /* POWER & MODE CONTROLS */
+        function togglePower() {
+            state.power = !state.power;
+            showToast(state.power ? "Sistem Dinyalakan" : "Sistem Dimatikan", "info");
+            updateUI();
+        }
+
+        function setMode(m) {
+            if (!state.power) state.power = true;
+            state.mode = m;
+            if (m === 'ECO') state.fanSpeed = 30;
+            if (m === 'TURBO') state.fanSpeed = 100;
+            if (m === 'NIGHT') state.fanSpeed = 15;
+            if (m === 'AUTO') adjustAutoFan();
+            
+            showToast(`Mode ${m} Aktif`, "info");
+            updateUI();
+        }
+
+        function manualFanSlider(val) {
+            if (!state.power) state.power = true;
+            state.fanSpeed = parseInt(val);
+            state.mode = 'CUSTOM';
+            updateUI();
+        }
+
+        function adjustAutoFan() {
+            const pm = state.telemetry.pm25;
+            if (pm > 55) state.fanSpeed = 100;
+            else if (pm > 25) state.fanSpeed = 65;
+            else state.fanSpeed = 30;
+        }
+
+        /* CHART.JS MANAGEMENT */
+        function initChart() {
+            const ctxMain = document.getElementById('multiMetricChart').getContext('2d');
+            const now = new Date();
+
+            for (let i = 8; i >= 0; i--) {
+                const timeStr = new Date(now.getTime() - i * 3000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                state.historyLabels.push(timeStr);
+                state.historyData.aqi.push(24);
+                state.historyData.pm25.push(12.4);
+                state.historyData.gas.push(148);
+                state.historyData.temp.push(26.5);
+                state.historyData.humid.push(54);
+            }
+
+            chartInstance = new Chart(ctxMain, {
+                type: 'line',
+                data: {
+                    labels: state.historyLabels,
+                    datasets: [
+                        { label: 'AQI', data: state.historyData.aqi, borderColor: '#384635', backgroundColor: 'rgba(56, 70, 53, 0.05)', borderWidth: 2, tension: 0.4, pointRadius: 2 },
+                        { label: 'PM 2.5', data: state.historyData.pm25, borderColor: '#10b981', backgroundColor: 'rgba(16, 185, 129, 0.05)', borderWidth: 2, tension: 0.4, pointRadius: 2 },
+                        { label: 'Gas (PPM)', data: state.historyData.gas, borderColor: '#d97706', backgroundColor: 'rgba(217, 119, 6, 0.05)', borderWidth: 2, tension: 0.4, pointRadius: 2 },
+                        { label: 'Suhu (°C)', data: state.historyData.temp, borderColor: '#ef4444', backgroundColor: 'rgba(239, 68, 68, 0.05)', borderWidth: 2, tension: 0.4, pointRadius: 2 },
+                        { label: 'Lembap (%)', data: state.historyData.humid, borderColor: '#06b6d4', backgroundColor: 'rgba(6, 182, 212, 0.05)', borderWidth: 2, tension: 0.4, pointRadius: 2 }
+                    ]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { grid: { display: false }, ticks: { font: { family: "'Plus Jakarta Sans', sans-serif", size: 10 }, color: '#9ca3af' } },
+                        y: { grid: { color: '#f3f4f6' }, ticks: { font: { family: "'Plus Jakarta Sans', sans-serif", size: 10 }, color: '#9ca3af' } }
+                    }
+                }
+            });
+
+            const configs = {
+                aqi: { color: '#384635' },
+                pm25: { color: '#10b981' },
+                gas: { color: '#d97706' },
+                temp: { color: '#ef4444' },
+                humid: { color: '#06b6d4' }
+            };
+
+            Object.keys(configs).forEach(key => {
+                const ctxMini = document.getElementById(`miniChart-${key}`).getContext('2d');
+                miniCharts[key] = new Chart(ctxMini, {
+                    type: 'line',
+                    data: {
+                        labels: state.historyLabels,
+                        datasets: [{ data: state.historyData[key], borderColor: configs[key].color, borderWidth: 2, tension: 0.4, pointRadius: 0 }]
+                    },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        plugins: { legend: { display: false }, tooltip: { enabled: false } },
+                        scales: { x: { display: false }, y: { display: false } },
+                        layout: { padding: 0 }
+                    }
+                });
+            });
+
+            updateChartDatasetsVisibility();
+        }
+
+        function toggleMiniChart(metric) {
+            const container = document.getElementById(`mini-container-${metric}`);
+            container.classList.toggle('hidden');
+        }
+
+        function updateChartDatasetsVisibility() {
+            if (!chartInstance) return;
+            const mapIndex = { aqi: 0, pm25: 1, gas: 2, temp: 3, humid: 4 };
+            const legendContainer = document.getElementById('chart-legend-chips');
+            legendContainer.innerHTML = '';
+
+            Object.keys(mapIndex).forEach(key => {
+                const index = mapIndex[key];
+                const isVisible = state.metricsChartVisible[key];
+                chartInstance.setDatasetVisibility(index, isVisible);
+
+                if (isVisible) {
+                    const dataset = chartInstance.data.datasets[index];
+                    const chip = document.createElement('span');
+                    chip.className = "px-3 py-1.5 rounded-lg text-[10px] md:text-xs font-medium text-white flex items-center gap-2 shadow-md hover:scale-105 transition-transform cursor-pointer";
+                    chip.style.backgroundColor = dataset.borderColor;
+                    chip.innerHTML = `<i class="fa-solid fa-circle text-[6px]"></i> ${dataset.label}`;
+                    legendContainer.appendChild(chip);
+                }
+            });
+            chartInstance.update();
+        }
+
+        function pushDataToChart() {
+            if (!chartInstance) return;
+            const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+            state.historyLabels.push(timeStr);
+            state.historyData.aqi.push(state.telemetry.aqi);
+            state.historyData.pm25.push(state.telemetry.pm25);
+            state.historyData.gas.push(state.telemetry.gas);
+            state.historyData.temp.push(state.telemetry.temp);
+            state.historyData.humid.push(state.telemetry.humid);
+
+            if (state.historyLabels.length > 20) {
+                state.historyLabels.shift();
+                state.historyData.aqi.shift();
+                state.historyData.pm25.shift();
+                state.historyData.gas.shift();
+                state.historyData.temp.shift();
+                state.historyData.humid.shift();
+            }
+
+            chartInstance.update();
+            Object.keys(miniCharts).forEach(key => miniCharts[key].update());
+        }
+
+        /* FALLBACK SIMULATION */
+        function simulateRealtimeTelemetry() {
+            state.telemetry.aqi = Math.max(10, state.telemetry.aqi + (Math.random() - 0.49) * 2);
+            state.telemetry.pm25 = Math.max(3, state.telemetry.pm25 + (Math.random() - 0.49) * 1.2);
+            state.telemetry.gas = Math.max(80, state.telemetry.gas + (Math.random() - 0.49) * 4);
+            state.telemetry.temp = state.telemetry.temp + (Math.random() - 0.5) * 0.1;
+            state.telemetry.humid = state.telemetry.humid + (Math.random() - 0.5) * 0.2;
+            if(state.mode === 'AUTO' && state.power) adjustAutoFan();
+        }
+
+        /* AIRFLOW CANVAS ANIMATION */
+        function initAirflowCanvas() {
+            const canvas = document.getElementById('airflow-canvas');
+            const ctx = canvas.getContext('2d');
+
+            function resize() {
+                if (canvas.parentElement) {
+                    canvas.width = canvas.parentElement.clientWidth;
+                    canvas.height = canvas.parentElement.clientHeight;
+                }
+            }
+            resize();
+            window.addEventListener('resize', resize);
+
+            const particles = Array.from({ length: 50 }, () => ({
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height,
+                radius: Math.random() * 2.5 + 1,
+                speedY: Math.random() * 1.5 + 0.5,
+                opacity: Math.random() * 0.5 + 0.1
+            }));
+
+            function draw() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                const activeSpeed = state.power ? (state.fanSpeed / 30) + 0.2 : 0.05;
+
+                particles.forEach(p => {
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                    
+                    // Warna partikel disesuaikan dark mode via transparansi
+                    const isDarkMode = document.documentElement.classList.contains('dark');
+                    const rgb = isDarkMode ? '255, 255, 255' : '139, 162, 136';
+                    ctx.fillStyle = `rgba(${rgb}, ${state.power ? p.opacity : p.opacity * 0.2})`;
+                    
+                    ctx.fill();
+
+                    p.y -= p.speedY * activeSpeed;
+
+                    if (p.y + p.radius < 0) {
+                        p.y = canvas.height + p.radius;
+                        p.x = Math.random() * canvas.width;
+                    }
+                });
+
+                requestAnimationFrame(draw);
+            }
+            draw();
+        }
+
+        /* TOAST NOTIFICATION (Dipercantik dengan Glassmorphism) */
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            // Menggunakan styling modern glassmorphism
+            toast.className = `glass text-slate-800 dark:text-white px-5 py-3 rounded-2xl shadow-xl border border-white/20 flex items-center gap-3 text-xs md:text-sm font-semibold transition-all duration-500 opacity-0 translate-y-4 scale-95 pointer-events-auto`;
+            
+            let icon = '<i class="fa-solid fa-circle-info text-blue-500"></i>';
+            if (type === 'success') icon = '<i class="fa-solid fa-circle-check text-emerald-500"></i>';
+            if (type === 'warning') icon = '<i class="fa-solid fa-triangle-exclamation text-amber-500"></i>';
+            if (type === 'info') icon = '<i class="fa-solid fa-bell text-earth-600 dark:text-earth-400"></i>';
+            
+            toast.innerHTML = `${icon} <span>${message}</span>`;
+            container.appendChild(toast);
+
+            void toast.offsetWidth; // Reflow untuk memicu animasi
+
+            // Animasi Masuk (Pop-up halus)
+            toast.classList.remove('opacity-0', 'translate-y-4', 'scale-95');
+            toast.classList.add('opacity-100', 'translate-y-0', 'scale-100');
+
+            // Hapus otomatis setelah 3 detik
+            setTimeout(() => {
+                toast.classList.remove('opacity-100', 'translate-y-0', 'scale-100');
+                toast.classList.add('opacity-0', '-translate-y-4', 'scale-95');
+                setTimeout(() => {
+                    if (container.contains(toast)) toast.remove();
+                }, 500);
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
